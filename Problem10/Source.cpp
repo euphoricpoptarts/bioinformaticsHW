@@ -99,7 +99,7 @@ void align_strings(std::string s1, std::string s2, int* align_score, int* align_
     align_path[0] = 0;
     for (int i = 1; i < rows; i++) {
         align_score[i * cols] = i * gap;
-        align_path[i * cols] = i * (cols - 1);
+        align_path[i * cols] = (i - 1) * cols;
     }
     for (int i = 1; i < cols; i++) {
         align_score[i] = i * gap;
@@ -133,8 +133,8 @@ int main() {
     s2 = (++data.begin())->second;
     int rows = s1.length() + 1;
     int cols = s2.length() + 1;
-    int* align_score = new int[(rows + 1) * (cols + 1)];
-    int* align_path = new int[(rows + 1) * (cols + 1)];
+    int* align_score = new int[rows * cols];
+    int* align_path = new int[rows * cols];
     align_strings(s1, s2, align_score, align_path);
     int best = align_score[rows * cols - 1];
     std::cout << best << std::endl;

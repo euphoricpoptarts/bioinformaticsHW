@@ -4,11 +4,16 @@
 #include <algorithm>
 #include <iostream>
 #include <list>
+#include <limits>
+#include <exception>
 
 using pair = std::pair<std::string, std::string>;
 
+//divide by 2 to prevent underflow
+const int neg_inf = std::numeric_limits<int>::min() / 2;
+
 std::list<pair> get_data() {
-    std::ifstream f("rosalind_glob.txt");
+    std::ifstream f("rosalind_laff.txt");
     std::list<pair> data;
     if (f.is_open()) {
         bool begin = true;
@@ -90,36 +95,101 @@ int* align_matrix() {
     return matrix;
 }
 
+int getOffset(int rows, int cols, int r, int c, int m) {
+    return m * rows * cols + r * cols + c;
+}
+
+int* getPos(int* arr, int rows, int cols, int r, int c, int m) {
+    return (arr + getOffset(rows, cols, r, c, m));
+}
+
 void align_strings(std::string s1, std::string s2, int* align_score, int* align_path) {
     int* cost_matrix = align_matrix();
     int rows = s1.length() + 1;
     int cols = s2.length() + 1;
-    int gap = -5;
-    align_score[0] = 0;
-    align_path[0] = 0;
+    int gap_start = -11;
+    int gap_extend = -1;
+    //need to set things to zero instead of -inf because 0 is the minimum value for local alignments
+    *getPos(align_score, rows, cols, 0, 0, 0) = 0;
+    *getPos(align_path, rows, cols, 0, 0, 0) = getOffset(rows, cols, 0, 0, 0);
+    *getPos(align_score, rows, cols, 0, 0, 1) = neg_inf;
+    *getPos(align_path, rows, cols, 0, 0, 1) = getOffset(rows, cols, 0, 0, 1);
+    *getPos(align_score, rows, cols, 0, 0, 2) = neg_inf;
+    *getPos(align_path, rows, cols, 0, 0, 2) = getOffset(rows, cols, 0, 0, 2);
     for (int i = 1; i < rows; i++) {
-        align_score[i * cols] = i * gap;
-        align_path[i * cols] = i * (cols - 1);
+        *getPos(align_score, rows, cols, i, 0, 0) = 0;//neg_inf;
+        *getPos(align_path, rows, cols, i, 0, 0) = getOffset(rows, cols, i, 0, 0);
+        //alignment between i characters of s1 and 0 characters of s2 ending in gap of s1
+        *getPos(align_score, rows, cols, i, 0, 1) = neg_inf;
+        *getPos(align_path, rows, cols, i, 0, 1) = getOffset(rows, cols, i, 0, 1);
+        //alignment between i characters of s1 and 0 characters of s2 ending in gap of s2
+        *getPos(align_score, rows, cols, i, 0, 2) = gap_start + (i-1)*gap_extend;
+        *getPos(align_path, rows, cols, i, 0, 2) = getOffset(rows, cols, i, 0, 2);
     }
     for (int i = 1; i < cols; i++) {
-        align_score[i] = i * gap;
-        align_path[i] = i - 1;
+        *getPos(align_score, rows, cols, 0, i, 0) = 0;//neg_inf;
+        *getPos(align_path, rows, cols, 0, i, 0) = getOffset(rows, cols, 0, i, 0);
+        //alignment between 0 characters of s1 and i characters of s2 ending in gap of s1
+        *getPos(align_score, rows, cols, 0, i, 1) = gap_start + (i-1)*gap_extend;
+        *getPos(align_path, rows, cols, 0, i, 1) = getOffset(rows, cols, 0, i, 1);
+        //alignment between 0 characters of s1 and i characters of s2 ending in gap of s2
+        *getPos(align_score, rows, cols, 0, i, 2) = neg_inf;
+        *getPos(align_path, rows, cols, 0, i, 2) = getOffset(rows, cols, 0, i, 2);
     }
     for (int i = 1; i < rows; i++) {
         for (int j = 1; j < cols; j++) {
-            int update[3];
-            update[0] = align_score[(i - 1) * cols + j] + gap;
-            update[1] = align_score[i * cols + (j - 1)] + gap;
             char a = s1.at(i - 1);
             char b = s2.at(j - 1);
-            update[2] = align_score[(i - 1) * cols + (j - 1)] + cost_matrix[a * 256 + b];
-            int backtrace[3] = { (i - 1) * cols + j, i * cols + (j - 1), (i - 1) * cols + (j - 1) };
-            auto max = std::max_element(update, update + 3);
+            int update[4];
+            int align_cost = cost_matrix[a * 256 + b];
+
+            //M
+            update[0] = *getPos(align_score, rows, cols, i - 1, j - 1, 0) + align_cost;
+            update[1] = *getPos(align_score, rows, cols, i - 1, j - 1, 1) + align_cost;
+            update[2] = *getPos(align_score, rows, cols, i - 1, j - 1, 2) + align_cost;
+            update[3] = 0;
+            int backtrace[4] = { 
+                getOffset(rows, cols, i - 1, j - 1, 0),
+                getOffset(rows, cols, i - 1, j - 1, 1),
+                getOffset(rows, cols, i - 1, j - 1, 2),
+                getOffset(rows, cols, i, j, 0),
+            };
+            auto max = std::max_element(update, update + 4);
             int argmax = std::distance(update, max);
             int best = *max;
-            align_score[i * cols + j] = best;
+            *getPos(align_score, rows, cols, i, j, 0) = best;
             //don't really care about ties
-            align_path[i * cols + j] = backtrace[argmax];
+            *getPos(align_path, rows, cols, i, j, 0) = backtrace[argmax];
+
+            //X
+            update[0] = *getPos(align_score, rows, cols, i, j - 1, 0) + gap_start + gap_extend;
+            update[1] = *getPos(align_score, rows, cols, i, j - 1, 1) + gap_extend;
+            update[2] = *getPos(align_score, rows, cols, i, j - 1, 2) + gap_start + gap_extend;
+            update[3] = 0;
+            backtrace[0] = getOffset(rows, cols, i, j - 1, 0);
+            backtrace[1] = getOffset(rows, cols, i, j - 1, 1);
+            backtrace[2] = getOffset(rows, cols, i, j - 1, 2);
+            backtrace[3] = getOffset(rows, cols, i, j, 1);
+            max = std::max_element(update, update + 3);
+            argmax = std::distance(update, max);
+            best = *max;
+            *getPos(align_score, rows, cols, i, j, 1) = best;
+            *getPos(align_path, rows, cols, i, j, 1) = backtrace[argmax];
+
+            //Y
+            update[0] = *getPos(align_score, rows, cols, i - 1, j, 0) + gap_start + gap_extend;
+            update[1] = *getPos(align_score, rows, cols, i - 1, j, 1) + gap_start + gap_extend;
+            update[2] = *getPos(align_score, rows, cols, i - 1, j, 2) + gap_extend;
+            update[3] = 0;
+            backtrace[0] = getOffset(rows, cols, i - 1, j, 0);
+            backtrace[1] = getOffset(rows, cols, i - 1, j, 1);
+            backtrace[2] = getOffset(rows, cols, i - 1, j, 2);
+            backtrace[3] = getOffset(rows, cols, i, j, 2);
+            max = std::max_element(update, update + 3);
+            argmax = std::distance(update, max);
+            best = *max;
+            *getPos(align_score, rows, cols, i, j, 2) = best;
+            *getPos(align_path, rows, cols, i, j, 2) = backtrace[argmax];
         }
     }
     delete[] cost_matrix;
@@ -133,11 +203,43 @@ int main() {
     s2 = (++data.begin())->second;
     int rows = s1.length() + 1;
     int cols = s2.length() + 1;
-    int* align_score = new int[(rows + 1) * (cols + 1)];
-    int* align_path = new int[(rows + 1) * (cols + 1)];
+    std::cout << "Rows: " << rows << "; Cols: " << cols << std::endl;
+    //times 3 for the 3 matrices X, Y, and M
+    int* align_score, *align_path;
+    try {
+        align_score = new int[3 * rows * cols];
+        align_path = new int[3 * rows * cols];
+    }
+    catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+        return 1;
+    }
     align_strings(s1, s2, align_score, align_path);
-    int best = align_score[rows * cols - 1];
+    auto max = std::max_element(align_score, align_score + 3 * rows * cols);
+    int best = *max;
+    int argmax = std::distance(align_score, max);
+    int current = argmax;
+    int next = align_path[argmax];
+    while (next != current) {
+        current = next;
+        next = align_path[next];
+    }
+    int s1_start = (current % (rows*cols)) / cols;
+    int s1_end = (argmax % (rows*cols)) / cols;
+    int s2_start = (current % (rows * cols)) % cols;
+    int s2_end = (argmax % (rows * cols)) % cols;
     std::cout << best << std::endl;
+    //for (int c = 0; c < 3; c++) {
+    //    std::cout << c << std::endl;
+    //    for (int i = 0; i < rows; i++) {
+    //        for (int j = 0; j < cols; j++) {
+    //            std::cout << *getPos(align_score, rows, cols, i, j, c) << " ";
+    //        }
+    //        std::cout << std::endl;
+    //    }
+    //}
+    std::cout << s1.substr(s1_start, s1_end - s1_start) << std::endl;
+    std::cout << s2.substr(s2_start, s2_end - s2_start) << std::endl;
     delete[] align_score;
     delete[] align_path;
 }
