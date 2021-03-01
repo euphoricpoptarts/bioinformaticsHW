@@ -5,7 +5,7 @@
 #include <list>
 
 std::string get_input() {
-	std::ifstream f("rosalind_mrep.txt");
+	std::ifstream f("rosalind_suff.txt");
 	std::string data;
 	if (f.is_open()) {
 		//only one line of data expected
@@ -34,44 +34,10 @@ public:
 	}
 };
 
-char traverse(tree_node* x, std::string output, std::string input, int trie_depth) {
-	//0 is a placeholder character before any characters have been processed
-	char preceding = 0;
-	bool all_match = true;
+void traverse(tree_node* x, std::ofstream& out_f) {
 	for (auto pair : x->children) {
-		std::string name = pair.first;
-		//make sure to add length of name, because depth in tree is different from depth in trie
-		char child_preceding = traverse(pair.second, output + name, input, trie_depth + name.length());
-		//if any children are left diverse, or if all children don't have the same left preceding char
-		//then we know that this node is also left diverse
-		if (preceding && preceding != child_preceding && child_preceding != 1) {
-			all_match = false;
-		}
-		else if (!preceding) {
-			preceding = child_preceding;
-		}
-	}
-	if (x->children.size() == 0) {
-		if (trie_depth == input.length()) {
-			//2 is a dummy character to indicate the character before start of string
-			return 2;
-		}
-		//the depth of the suffix tells us where to find the character preceding it
-		return input.at(input.length() - trie_depth - 1);
-	}
-	else {
-		//output if this node is left diverse
-		if (!all_match && output.length() >= 20) {
-			std::cout << output << std::endl;
-		}
-		if (all_match) {
-			//if not left diverse, return left preceding character
-			return preceding;
-		}
-		else {
-			//else return a dummy character to indicate that this is left diverse
-			return 1;
-		}
+		out_f << pair.first << std::endl;
+		traverse(pair.second, out_f);
 	}
 }
 
@@ -117,8 +83,8 @@ void collapse_tree(tree_node* x) {
 }
 
 tree_node* construct_tree(std::string input) {
-	tree_node * root = new tree_node();
-	tree_node * deepest_suffix = root;
+	tree_node* root = new tree_node();
+	tree_node* deepest_suffix = root;
 	for (int i = 0; i < input.length(); i++) {
 		std::string y;
 		y.push_back(input.at(i));
@@ -130,11 +96,14 @@ tree_node* construct_tree(std::string input) {
 
 int main() {
 	std::string input = get_input();
-	input.push_back('$');
 	if (input == "") {
 		return 1;
 	}
 	tree_node* x = construct_tree(input);
-	traverse(x, "", input, 0);
+	std::ofstream out_file("out.txt");
+	if (out_file.is_open()) {
+		traverse(x, out_file);
+		out_file.close();
+	}
 	delete x;
 }
