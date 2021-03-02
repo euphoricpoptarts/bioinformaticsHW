@@ -112,28 +112,28 @@ void align_strings(std::string s1, std::string s2, int* align_score, int* align_
     //need to set things to zero instead of -inf because 0 is the minimum value for local alignments
     *getPos(align_score, rows, cols, 0, 0, 0) = 0;
     *getPos(align_path, rows, cols, 0, 0, 0) = getOffset(rows, cols, 0, 0, 0);
-    *getPos(align_score, rows, cols, 0, 0, 1) = neg_inf;
+    *getPos(align_score, rows, cols, 0, 0, 1) = 0;// neg_inf;
     *getPos(align_path, rows, cols, 0, 0, 1) = getOffset(rows, cols, 0, 0, 1);
-    *getPos(align_score, rows, cols, 0, 0, 2) = neg_inf;
+    *getPos(align_score, rows, cols, 0, 0, 2) = 0;// neg_inf;
     *getPos(align_path, rows, cols, 0, 0, 2) = getOffset(rows, cols, 0, 0, 2);
     for (int i = 1; i < rows; i++) {
         *getPos(align_score, rows, cols, i, 0, 0) = 0;//neg_inf;
         *getPos(align_path, rows, cols, i, 0, 0) = getOffset(rows, cols, i, 0, 0);
         //alignment between i characters of s1 and 0 characters of s2 ending in gap of s1
-        *getPos(align_score, rows, cols, i, 0, 1) = neg_inf;
+        *getPos(align_score, rows, cols, i, 0, 1) = 0;// neg_inf;
         *getPos(align_path, rows, cols, i, 0, 1) = getOffset(rows, cols, i, 0, 1);
         //alignment between i characters of s1 and 0 characters of s2 ending in gap of s2
-        *getPos(align_score, rows, cols, i, 0, 2) = gap_start + (i-1)*gap_extend;
+        *getPos(align_score, rows, cols, i, 0, 2) = 0;// gap_start + (i - 1) * gap_extend;
         *getPos(align_path, rows, cols, i, 0, 2) = getOffset(rows, cols, i, 0, 2);
     }
     for (int i = 1; i < cols; i++) {
         *getPos(align_score, rows, cols, 0, i, 0) = 0;//neg_inf;
         *getPos(align_path, rows, cols, 0, i, 0) = getOffset(rows, cols, 0, i, 0);
         //alignment between 0 characters of s1 and i characters of s2 ending in gap of s1
-        *getPos(align_score, rows, cols, 0, i, 1) = gap_start + (i-1)*gap_extend;
+        *getPos(align_score, rows, cols, 0, i, 1) = 0;// gap_start + (i - 1) * gap_extend;
         *getPos(align_path, rows, cols, 0, i, 1) = getOffset(rows, cols, 0, i, 1);
         //alignment between 0 characters of s1 and i characters of s2 ending in gap of s2
-        *getPos(align_score, rows, cols, 0, i, 2) = neg_inf;
+        *getPos(align_score, rows, cols, 0, i, 2) = 0;// neg_inf;
         *getPos(align_path, rows, cols, 0, i, 2) = getOffset(rows, cols, 0, i, 2);
     }
     for (int i = 1; i < rows; i++) {
@@ -162,30 +162,30 @@ void align_strings(std::string s1, std::string s2, int* align_score, int* align_
             *getPos(align_path, rows, cols, i, j, 0) = backtrace[argmax];
 
             //X
-            update[0] = *getPos(align_score, rows, cols, i, j - 1, 0) + gap_start + gap_extend;
+            update[0] = *getPos(align_score, rows, cols, i, j - 1, 0) + gap_start;// +gap_extend;
             update[1] = *getPos(align_score, rows, cols, i, j - 1, 1) + gap_extend;
-            update[2] = *getPos(align_score, rows, cols, i, j - 1, 2) + gap_start + gap_extend;
+            update[2] = *getPos(align_score, rows, cols, i, j - 1, 2) + gap_start;// +gap_extend;
             update[3] = 0;
             backtrace[0] = getOffset(rows, cols, i, j - 1, 0);
             backtrace[1] = getOffset(rows, cols, i, j - 1, 1);
             backtrace[2] = getOffset(rows, cols, i, j - 1, 2);
             backtrace[3] = getOffset(rows, cols, i, j, 1);
-            max = std::max_element(update, update + 3);
+            max = std::max_element(update, update + 4);
             argmax = std::distance(update, max);
             best = *max;
             *getPos(align_score, rows, cols, i, j, 1) = best;
             *getPos(align_path, rows, cols, i, j, 1) = backtrace[argmax];
 
             //Y
-            update[0] = *getPos(align_score, rows, cols, i - 1, j, 0) + gap_start + gap_extend;
-            update[1] = *getPos(align_score, rows, cols, i - 1, j, 1) + gap_start + gap_extend;
+            update[0] = *getPos(align_score, rows, cols, i - 1, j, 0) + gap_start;// +gap_extend;
+            update[1] = *getPos(align_score, rows, cols, i - 1, j, 1) + gap_start;// +gap_extend;
             update[2] = *getPos(align_score, rows, cols, i - 1, j, 2) + gap_extend;
             update[3] = 0;
             backtrace[0] = getOffset(rows, cols, i - 1, j, 0);
             backtrace[1] = getOffset(rows, cols, i - 1, j, 1);
             backtrace[2] = getOffset(rows, cols, i - 1, j, 2);
             backtrace[3] = getOffset(rows, cols, i, j, 2);
-            max = std::max_element(update, update + 3);
+            max = std::max_element(update, update + 4);
             argmax = std::distance(update, max);
             best = *max;
             *getPos(align_score, rows, cols, i, j, 2) = best;
