@@ -7,9 +7,9 @@
 #include <unordered_set>
 #include <unordered_map>
 
-using set = std::unordered_set<std::string>;
 using pair = std::pair<std::string, std::string>;
-using map = std::unordered_map<std::string, std::list<std::string>>;
+using set = std::unordered_set<pair>;
+using map = std::unordered_map<pair, std::list<pair>>;
 
 std::string rcomp(std::string data) {
     std::string output;
@@ -31,9 +31,9 @@ std::string rcomp(std::string data) {
     return output;
 }
 
-std::list<std::string> get_data() {
+std::list<pair> get_data() {
     std::ifstream f("rosalind_pcov.txt");
-    std::list<std::string> data;
+    std::list<pair> data;
     set uniques;
     if (f.is_open()) {
         bool begin = true;
@@ -41,9 +41,14 @@ std::list<std::string> get_data() {
         std::string id = "";
         std::string dna = "";
         while (f >> line) {
-            if (uniques.count(line) == 0) {
-                uniques.insert(line);
-                data.push_back(line);
+            std::string r = rcomp(line);
+            pair p = std::make_pair(line, r);
+            if (line.compare(r) < 0) {
+                p = std::make_pair(r, line);
+            }
+            if (uniques.count(p) == 0) {
+                uniques.insert(p);
+                data.push_back(p);
             }
         }
         if (!f.eof()) {
@@ -58,9 +63,9 @@ std::list<std::string> get_data() {
     return data;
 }
 
-std::list<pair> make_graph_adjacencies(std::list<std::string> data) {
+std::list<pair> make_graph_adjacencies(std::list<pair> data) {
     std::list<pair> graph;
-    for (std::string kmer : data) {
+    for (pair kmer : data) {
         std::string first = kmer.substr(0, kmer.size() - 1);
         std::string second = kmer.substr(1);
         graph.push_back(std::make_pair(first, second));
@@ -86,7 +91,7 @@ map make_graph(std::list<pair> adjs) {
 }
 
 int main() {
-    std::list<std::string> data = get_data();
+    std::list<pair> data = get_data();
     std::list<pair> adjs = make_graph_adjacencies(data);
     map graph = make_graph(adjs);
     std::string start = graph.begin()->first;
