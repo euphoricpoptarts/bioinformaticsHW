@@ -33,7 +33,7 @@ std::string rcomp(std::string data) {
 }
 
 std::list<std::string> get_data() {
-    std::ifstream f("rosalind_idk.txt");
+    std::ifstream f("rosalind_grep.txt");
     std::list<std::string> data;
     if (f.is_open()) {
         bool begin = true;
@@ -77,6 +77,23 @@ map make_graph(std::list<pair> adjs) {
         else {
             auto lookup = graph.find(idx);
             lookup->second.push_back(adj.second);
+        }
+    }
+    return graph;
+}
+
+map make_reverse_graph(std::list<pair> adjs) {
+    map graph;
+    for (pair adj : adjs) {
+        std::string idx = adj.second;
+        if (graph.count(idx) == 0) {
+            std::list<std::string> l;
+            l.push_back(adj.first);
+            graph.insert(std::make_pair(idx, l));
+        }
+        else {
+            auto lookup = graph.find(idx);
+            lookup->second.push_back(adj.first);
         }
     }
     return graph;
@@ -133,46 +150,65 @@ std::list<std::string> traverse(std::string start, map& graph) {
     }
 }
 
+void k_rollback(map& graph, map& reverse, std::string start, int k) {
+    if (k <= 0) {
+        return;
+    }
+    std::string remove_from = reverse.at(start).front();
+    reverse.at(start).pop_front();
+    list& l = graph.at(remove_from);
+    for (auto it = l.begin(); it != l.end(); it++) {
+        if (start.compare(*it) == 0) {
+            l.erase(it);
+            break;
+        }
+    }
+    k_rollback(graph, reverse, remove_from, k - 1);
+}
+
 int main() {
     std::list<std::string> data = get_data();
     std::string output = *data.begin();
     std::string start = output.substr(1);
     std::string to_remove = output.substr(0, output.size() - 1);
     output = output.substr(0, output.size() - 1);
-    data.pop_front();
+    
     std::list<pair> adjs = make_graph_adjacencies(data);
     map graph = make_graph(adjs);
     std::string current = start;
-    bool breakout = false;
-    for (auto& p : graph) {
-        list& l = p.second;
-        for (auto it = l.begin(); it != l.end(); it++) {
-            if (*it == to_remove) {
-                l.erase(it);
-                breakout = true;
-                break;
-            }
-        }
-        if (breakout) break;
-    }
-    to_remove = "TC";
-    breakout = false;
-    for (auto& p : graph) {
-        list& l = p.second;
-        for (auto it = l.begin(); it != l.end(); it++) {
-            if (*it == to_remove) {
-                l.erase(it);
-                breakout = true;
-                break;
-            }
-        }
-        if (breakout) break;
-    }
+    map reverse = make_reverse_graph(adjs);
+    //remove edges already included from "output"
+    k_rollback(graph, reverse, start, 1);
+
     list l = traverse(current, graph);
     l.sort();
-    std::ofstream out("output.txt");
+    int max_l = 0;
+    //sometimes the alg finds a valid cyclical strign that doesn't include all reads
+    //this will cause it to be too short
+    //easy fix is to just use longest strings (idk how to fix this in the alg)
     for (auto s : l) {
-        std::cout << output << s << std::endl;
+        if (s.length() > max_l) {
+            max_l = s.length();
+        }
+    }
+    auto it = l.begin();
+    while (it != l.end()) {
+        if ((*it).length() != max_l) {
+            l.erase(it++);
+        }
+        else {
+            it++;
+        }
+    }
+    std::ofstream out("output.txt");
+    set uniques;
+    for (auto s : l) {
+        //last few chars are redundant if we want the strings to begin with output
+        std::string out_s = output + s.substr(0, s.length() - start.length());
+        if (uniques.count(out_s) == 0) {
+            out << out_s << std::endl;
+            uniques.insert(out_s);
+        }
     }
     out.close();
     return 0;
